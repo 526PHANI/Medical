@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import debounce from "lodash.debounce";
 
 interface FormData {
   name: string;
@@ -34,52 +35,74 @@ export default function PurchaseForm() {
   const [customerHistory, setCustomerHistory] = useState<CustomerData[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [existingCustomer, setExistingCustomer] = useState<CustomerData | null>(null);
+
+  // Fetch customer history
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch(`${appScriptUrl}?action=get`);
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+      const data: CustomerData[] = await res.json();
+      setCustomerHistory(data);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Unknown error");
+      console.error("Failed to fetch data:", error.message);
+      toast.error(`Failed to load customer history: ${error.message}`);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`${appScriptUrl}?action=get`);
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-        const data: CustomerData[] = await res.json();
-        setCustomerHistory(data);
-      } catch (err: any) {
-        console.error("Failed to fetch data:", err.message);
-        toast.error(`Failed to load customer history: ${err.message}`);
-      }
-    };
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  // Debounced function to check for existing customer
+  const checkExistingCustomer = useCallback(
+    debounce((phone: string, history: CustomerData[]) => {
+      if (phone.length === 10) {
+        const customer = history.find((c) => c.phone === phone);
+        if (customer) {
+          setExistingCustomer(customer);
+          setIsExistingCustomer(true);
+          setShowConfirmation(true);
+          setFormData((prev) => ({
+            ...prev,
+            name: customer.name,
+            phone,
+          }));
+          toast.success(`Welcome back, ${customer.name}!`);
+        } else {
+          setIsExistingCustomer(false);
+          setExistingCustomer(null);
+          setShowConfirmation(false);
+        }
+      } else {
+        setIsExistingCustomer(false);
+        setExistingCustomer(null);
+        setShowConfirmation(false);
+      }
+    }, 500),
+    []
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    
+
     if (id === "phone") {
       if (!/^\d{0,10}$/.test(value)) return;
-      if (value.length === 10) {
-        const existingCustomer = customerHistory.find(c => c.phone === value);
-        if (existingCustomer) {
-          toast.success(`Welcome back, ${existingCustomer.name}!`);
-          setFormData(prev => ({
-            ...prev,
-            name: existingCustomer.name,
-            phone: value
-          }));
-          setIsExistingCustomer(true);
-          return;
-        } else {
-          setIsExistingCustomer(false);
-        }
-      }
+      setFormData((prev) => ({ ...prev, phone: value }));
+      checkExistingCustomer(value, customerHistory);
+      return;
     }
-    
+
     if (id === "quantity") {
       if (value === "" || (/^\d*$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 200)) {
-        setFormData(prev => ({ ...prev, quantity: value }));
+        setFormData((prev) => ({ ...prev, quantity: value }));
       }
       return;
     }
-    
-    setFormData(prev => ({ ...prev, [id]: value }));
+
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleQuantityChange = (increment: boolean) => {
@@ -87,12 +110,12 @@ export default function PurchaseForm() {
     let newQuantity = increment ? currentQuantity + 1 : currentQuantity - 1;
     if (newQuantity < 1) newQuantity = 1;
     if (newQuantity > 200) newQuantity = 200;
-    setFormData(prev => ({ ...prev, quantity: String(newQuantity) }));
+    setFormData((prev) => ({ ...prev, quantity: String(newQuantity) }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.phone.length !== 10) {
       toast.error("Please enter a valid 10-digit phone number");
       return;
@@ -108,7 +131,7 @@ export default function PurchaseForm() {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const response = await fetch(`${appScriptUrl}?action=post`, {
         method: "POST",
@@ -125,36 +148,45 @@ export default function PurchaseForm() {
           quantity: "1",
           purchaseDate: new Date().toISOString().slice(0, 10),
         });
+        setShowConfirmation(false);
         navigate("/list");
       } else {
         throw new Error("Submission failed");
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error("Unknown error");
+      console.error(err);
       toast.error("Failed to submit purchase. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleConfirmNewPurchase = () => {
+    setShowConfirmation(false);
+  };
+
+  const handleViewHistory = () => {
+    setShowConfirmation(false);
+    navigate(`/list?phone=${formData.phone}`);
+  };
+
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   const formatMedicineDisplay = (medicine: string, quantity: string) => {
-    return `${medicine}${quantity !== "1" ? ` (${quantity} ${parseInt(quantity) > 1 ? 'tablets' : 'tablet'})` : ''}`;
+    return `${medicine}${quantity !== "1" ? ` (${quantity} ${parseInt(quantity) > 1 ? "tablets" : "tablet"})` : ""}`;
   };
 
-  const customerPurchases = customerHistory.filter(
-    c => c.phone === formData.phone
-  ).sort((a, b) => 
-    new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
-  );
+  const customerPurchases = customerHistory
+    .filter((c) => c.phone === formData.phone)
+    .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
 
   return (
     <motion.div
@@ -167,9 +199,9 @@ export default function PurchaseForm() {
         <div className="p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">New Purchase Record</h2>
+              <h2 className="text-2xl font-bold text-gray-900">New Purchase</h2>
               <p className="mt-1 text-sm text-gray-500">
-                {isExistingCustomer ? "Existing customer" : "New customer"}
+                {isExistingCustomer ? `Existing customer: ${existingCustomer?.name}` : "New customer"}
               </p>
             </div>
             <button
@@ -193,7 +225,10 @@ export default function PurchaseForm() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isExistingCustomer}
+                    className={`block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 ${
+                      isExistingCustomer ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
                     placeholder="John Doe"
                   />
                 </div>
@@ -268,9 +303,6 @@ export default function PurchaseForm() {
                     >
                       +
                     </button>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                     
-                    </div>
                   </div>
                 </div>
               </div>
@@ -299,9 +331,9 @@ export default function PurchaseForm() {
                   onClick={() => setShowHistory(!showHistory)}
                   className="text-sm font-medium text-blue-600 hover:text-blue-500 flex items-center"
                 >
-                  {showHistory ? 'Hide' : 'Show'} purchase history
+                  {showHistory ? "Hide" : "Show"} purchase history
                   <svg
-                    className={`ml-1 h-4 w-4 transform ${showHistory ? 'rotate-180' : ''}`}
+                    className={`ml-1 h-4 w-4 transform ${showHistory ? "rotate-180" : ""}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -315,7 +347,7 @@ export default function PurchaseForm() {
             {showHistory && isExistingCustomer && customerPurchases.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 className="bg-gray-50 p-4 rounded-lg"
               >
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Previous Purchases</h3>
@@ -326,9 +358,7 @@ export default function PurchaseForm() {
                         <p className="font-medium text-gray-800">
                           {formatMedicineDisplay(purchase.medicine, purchase.quantity)}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(purchase.purchaseDate)}
-                        </p>
+                        <p className="text-xs text-gray-500 mt-1">{formatDate(purchase.purchaseDate)}</p>
                       </div>
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                         #{index + 1}
@@ -342,25 +372,72 @@ export default function PurchaseForm() {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || showConfirmation}
                 className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                  isSubmitting || showConfirmation ? "opacity-70 cursor-not-allowed" : ""
                 }`}
               >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Processing...
                   </>
                 ) : (
-                  'Record Purchase'
+                  "Record Purchase"
                 )}
               </button>
             </div>
           </form>
+
+          {showConfirmation && existingCustomer && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+              <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Welcome back, {existingCustomer.name}!
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  Would you like to add a new purchase or view your purchase history?
+                </p>
+                <div className="mt-4 flex justify-end space-x-3">
+                  <button
+                    onClick={handleViewHistory}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  >
+                    View History
+                  </button>
+                  <button
+                    onClick={handleConfirmNewPurchase}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add New Purchase
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>
