@@ -1,11 +1,19 @@
+// Navbar.jsx
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useState } from "react"; // Added useState
 
 export default function Navbar() {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Added state for mobile menu
+
   const navItems = [
     { path: "/", name: "New Purchase", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
-    { path: "/list", name: "Purchase History", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
+    {
+      path: "/list",
+      name: "Purchase History",
+      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+    },
   ];
 
   return (
@@ -17,11 +25,15 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-   
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
               <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
               </svg>
               <span className="ml-2 text-xl font-bold text-gray-900 hidden sm:block">Durga Medical Store</span>
             </Link>
@@ -39,12 +51,12 @@ export default function Navbar() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <svg 
+                <svg
                   className={`w-5 h-5 mr-2 ${
                     location.pathname === item.path ? "text-blue-500" : "text-gray-400"
-                  }`} 
-                  fill="none" 
-                  stroke="currentColor" 
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
@@ -66,10 +78,18 @@ export default function Navbar() {
           <div className="-mr-2 flex items-center sm:hidden">
             <button
               type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-controls="mobile-menu"
+              aria-expanded={isMobileMenuOpen}
             >
               <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+                />
               </svg>
             </button>
           </div>
@@ -77,33 +97,43 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Navigation */}
-      <div className="sm:hidden">
-        <div className="pt-2 pb-4 border-t border-gray-200">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center px-4 py-3 text-base font-medium ${
-                location.pathname === item.path
-                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-500"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-              }`}
-            >
-              <svg 
-                className={`w-5 h-5 mr-3 ${
-                  location.pathname === item.path ? "text-blue-500" : "text-gray-400"
-                }`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+      {isMobileMenuOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="sm:hidden"
+          id="mobile-menu"
+        >
+          <div className="pt-2 pb-4 border-t border-gray-200">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)} // Close menu on click
+                className={`flex items-center px-4 py-3 text-base font-medium ${
+                  location.pathname === item.path
+                    ? "bg-blue-50 text-blue-600 border-l-4 border-blue-500"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                }`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-              </svg>
-              {item.name}
-            </Link>
-          ))}
-        </div>
-      </div>
+                <svg
+                  className={`w-5 h-5 mr-3 ${
+                    location.pathname === item.path ? "text-blue-500" : "text-gray-400"
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                </svg>
+                {item.name}
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </motion.nav>
   );
 }
