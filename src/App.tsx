@@ -1,4 +1,3 @@
-// App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,7 +9,7 @@ export default function App() {
   return (
     <Router basename="/Medical">
       <Navbar />
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <Routes>
           <Route path="/" element={<CreateForm />} />
           <Route path="/list" element={<DataList />} />

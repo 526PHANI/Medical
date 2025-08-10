@@ -1,11 +1,10 @@
-// Navbar.jsx
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useState } from "react"; // Added useState
+import { useState } from "react";
 
 export default function Navbar() {
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Added state for mobile menu
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { path: "/", name: "New Purchase", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
@@ -23,7 +22,7 @@ export default function Navbar() {
       transition={{ duration: 0.3 }}
       className="bg-white shadow-sm border-b border-gray-100"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
@@ -35,17 +34,17 @@ export default function Navbar() {
                   d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 />
               </svg>
-              <span className="ml-2 text-xl font-bold text-gray-900 hidden sm:block">Durga Medical Store</span>
+              <span className="ml-2 text-lg sm:text-xl font-bold text-gray-900 truncate">Durga Medical Store</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden sm:ml-6 sm:flex sm:space-x-2">
+          <div className="hidden sm:flex sm:items-center sm:space-x-2">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative inline-flex items-center px-4 py-2 text-sm font-medium transition-colors ${
+                className={`relative inline-flex items-center px-3 py-2 text-sm font-medium transition-colors ${
                   location.pathname === item.path
                     ? "text-blue-600"
                     : "text-gray-500 hover:text-gray-700"
@@ -61,7 +60,7 @@ export default function Navbar() {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                 </svg>
-                {item.name}
+                <span className="truncate">{item.name}</span>
                 {location.pathname === item.path && (
                   <motion.div
                     layoutId="navIndicator"
@@ -75,7 +74,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="-mr-2 flex items-center sm:hidden">
+          <div className="flex items-center sm:hidden">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -83,7 +82,7 @@ export default function Navbar() {
               aria-controls="mobile-menu"
               aria-expanded={isMobileMenuOpen}
             >
-              <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -111,7 +110,7 @@ export default function Navbar() {
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={() => setIsMobileMenuOpen(false)} // Close menu on click
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center px-4 py-3 text-base font-medium ${
                   location.pathname === item.path
                     ? "bg-blue-50 text-blue-600 border-l-4 border-blue-500"

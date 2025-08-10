@@ -38,7 +38,6 @@ export default function PurchaseForm() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [existingCustomer, setExistingCustomer] = useState<CustomerData | null>(null);
 
-  // Fetch customer history
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`${appScriptUrl}?action=get`);
@@ -56,7 +55,6 @@ export default function PurchaseForm() {
     fetchData();
   }, [fetchData]);
 
-  // Debounced function to check for existing customer
   const checkExistingCustomer = useCallback(
     debounce((phone: string, history: CustomerData[]) => {
       if (phone.length === 10) {
@@ -193,20 +191,20 @@ export default function PurchaseForm() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+      className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8"
     >
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">New Purchase</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">New Purchase</h2>
               <p className="mt-1 text-sm text-gray-500">
                 {isExistingCustomer ? `Existing customer: ${existingCustomer?.name}` : "New customer"}
               </p>
             </div>
             <button
               onClick={() => navigate("/list")}
-              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+              className="text-sm font-medium text-blue-600 hover:text-blue-500 truncate"
             >
               View All Purchases →
             </button>
@@ -226,7 +224,7 @@ export default function PurchaseForm() {
                     onChange={handleChange}
                     required
                     disabled={isExistingCustomer}
-                    className={`block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
                       isExistingCustomer ? "bg-gray-100 cursor-not-allowed" : ""
                     }`}
                     placeholder="John Doe"
@@ -240,7 +238,7 @@ export default function PurchaseForm() {
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">+91</span>
+                    <span className="text-gray-500 text-sm">+91</span>
                   </div>
                   <input
                     id="phone"
@@ -249,7 +247,7 @@ export default function PurchaseForm() {
                     onChange={handleChange}
                     required
                     maxLength={10}
-                    className="block w-full pl-12 px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                     placeholder="9876543210"
                   />
                 </div>
@@ -258,8 +256,8 @@ export default function PurchaseForm() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
                   <label htmlFor="medicine" className="block text-sm font-medium text-gray-700">
                     Medicine Name
                   </label>
@@ -270,7 +268,7 @@ export default function PurchaseForm() {
                       value={formData.medicine}
                       onChange={handleChange}
                       required
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                       placeholder="e.g., Paracetamol 500mg"
                     />
                   </div>
@@ -293,7 +291,7 @@ export default function PurchaseForm() {
                       value={formData.quantity}
                       onChange={handleChange}
                       required
-                      className="block w-full px-4 py-3 border-t border-b border-gray-300 text-center focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-4 py-3 border-t border-b border-gray-300 text-center focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                       placeholder="1"
                     />
                     <button
@@ -318,7 +316,7 @@ export default function PurchaseForm() {
                     value={formData.purchaseDate}
                     onChange={handleChange}
                     required
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -348,19 +346,19 @@ export default function PurchaseForm() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="bg-gray-50 p-4 rounded-lg"
+                className="bg-gray-50 p-4 rounded-lg mt-4"
               >
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Previous Purchases</h3>
                 <div className="space-y-3">
                   {customerPurchases.map((purchase, index) => (
                     <div key={index} className="flex justify-between items-start p-3 bg-white rounded-md shadow-xs">
-                      <div>
-                        <p className="font-medium text-gray-800">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-800 text-sm sm:text-base">
                           {formatMedicineDisplay(purchase.medicine, purchase.quantity)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{formatDate(purchase.purchaseDate)}</p>
                       </div>
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex-shrink-0">
                         #{index + 1}
                       </span>
                     </div>
@@ -412,25 +410,25 @@ export default function PurchaseForm() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             >
-              <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-                <h3 className="text-lg font-medium text-gray-900">
+              <div className="bg-white rounded-lg p-6 w-full max-w-sm sm:max-w-md">
+                <h3 className="text-lg sm:text-xl font-medium text-gray-900">
                   Welcome back, {existingCustomer.name}!
                 </h3>
                 <p className="mt-2 text-sm text-gray-500">
                   Would you like to add a new purchase or view your purchase history?
                 </p>
-                <div className="mt-4 flex justify-end space-x-3">
+                <div className="mt-4 flex flex-col sm:flex-row sm:justify-end sm:space-x-3 gap-3">
                   <button
                     onClick={handleViewHistory}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm sm:text-base"
                   >
                     View History
                   </button>
                   <button
                     onClick={handleConfirmNewPurchase}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
                   >
                     Add New Purchase
                   </button>
