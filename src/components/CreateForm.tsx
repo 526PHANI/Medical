@@ -4,11 +4,15 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import debounce from "lodash.debounce";
 
+interface Medicine {
+  medicine: string;
+  quantity: string;
+}
+
 interface FormData {
   name: string;
   phone: string;
-  medicine: string;
-  quantity: string;
+  medicines: Medicine[];
   purchaseDate: string;
 }
 
@@ -27,8 +31,7 @@ export default function PurchaseForm() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     phone: "",
-    medicine: "",
-    quantity: "1",
+    medicines: [{ medicine: "", quantity: "1" }],
     purchaseDate: new Date().toISOString().slice(0, 10),
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +86,7 @@ export default function PurchaseForm() {
     []
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
     const { id, value } = e.target;
 
     if (id === "phone") {
@@ -93,22 +96,59 @@ export default function PurchaseForm() {
       return;
     }
 
-    if (id === "quantity") {
-      if (value === "" || (/^\d*$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 200)) {
-        setFormData((prev) => ({ ...prev, quantity: value }));
-      }
+    if (id === "name" || id === "purchaseDate") {
+      setFormData((prev) => ({ ...prev, [id]: value }));
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    if (index !== undefined) {
+      if (id === "medicine") {
+        setFormData((prev) => ({
+          ...prev,
+          medicines: prev.medicines.map((med, i) =>
+            i === index ? { ...med, medicine: value } : med
+          ),
+        }));
+      } else if (id === "quantity") {
+        if (value === "" || (/^\d*$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 200)) {
+          setFormData((prev) => ({
+            ...prev,
+            medicines: prev.medicines.map((med, i) =>
+              i === index ? { ...med, quantity: value } : med
+            ),
+          }));
+        }
+      }
+    }
   };
 
-  const handleQuantityChange = (increment: boolean) => {
-    const currentQuantity = parseInt(formData.quantity) || 1;
-    let newQuantity = increment ? currentQuantity + 1 : currentQuantity - 1;
-    if (newQuantity < 1) newQuantity = 1;
-    if (newQuantity > 200) newQuantity = 200;
-    setFormData((prev) => ({ ...prev, quantity: String(newQuantity) }));
+  const handleQuantityChange = (index: number, increment: boolean) => {
+    setFormData((prev) => {
+      const currentQuantity = parseInt(prev.medicines[index].quantity) || 1;
+      let newQuantity = increment ? currentQuantity + 1 : currentQuantity - 1;
+      if (newQuantity < 1) newQuantity = 1;
+      if (newQuantity > 200) newQuantity = 200;
+      return {
+        ...prev,
+        medicines: prev.medicines.map((med, i) =>
+          i === index ? { ...med, quantity: String(newQuantity) } : med
+        ),
+      };
+    });
+  };
+
+  const addMedicine = () => {
+    setFormData((prev) => ({
+      ...prev,
+      medicines: [...prev.medicines, { medicine: "", quantity: "1" }],
+    }));
+  };
+
+  const removeMedicine = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      medicines: prev.medicines.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,39 +158,50 @@ export default function PurchaseForm() {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
-    if (!formData.medicine.trim()) {
-      toast.error("Please enter the medicine details");
-      return;
-    }
-    const quantityNum = parseInt(formData.quantity);
-    if (!formData.quantity || isNaN(quantityNum) || quantityNum < 1 || quantityNum > 200) {
-      toast.error("Please enter a valid quantity (1-200)");
-      return;
+
+    for (const [index, med] of formData.medicines.entries()) {
+      if (!med.medicine.trim()) {
+        toast.error(`Please enter medicine details for medicine ${index + 1}`);
+        return;
+      }
+      const quantityNum = parseInt(med.quantity);
+      if (!med.quantity || isNaN(quantityNum) || quantityNum < 1 || quantityNum > 200) {
+        toast.error(`Please enter a valid quantity (1-200) for medicine ${index + 1}`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${appScriptUrl}?action=post`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ ...formData, quantity: String(quantityNum) }),
-      });
-
-      if (response.ok) {
-        toast.success("Purchase recorded successfully!");
-        setFormData({
-          name: "",
-          phone: "",
-          medicine: "",
-          quantity: "1",
-          purchaseDate: new Date().toISOString().slice(0, 10),
+      // Send a separate POST request for each medicine
+      for (const med of formData.medicines) {
+        const response = await fetch(`${appScriptUrl}?action=post`, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formData.phone,
+            medicine: med.medicine,
+            quantity: med.quantity,
+            purchaseDate: formData.purchaseDate,
+          }),
         });
-        setShowConfirmation(false);
-        navigate("/list");
-      } else {
-        throw new Error("Submission failed");
+
+        if (!response.ok) {
+          throw new Error(`Submission failed for medicine: ${med.medicine}`);
+        }
       }
+
+      toast.success("Purchase recorded successfully!");
+      setFormData({
+        name: "",
+        phone: "",
+        medicines: [{ medicine: "", quantity: "1" }],
+        purchaseDate: new Date().toISOString().slice(0, 10),
+      });
+      setShowConfirmation(false);
+      navigate("/list");
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error("Unknown error");
       console.error(err);
@@ -256,53 +307,111 @@ export default function PurchaseForm() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-2">
-                  <label htmlFor="medicine" className="block text-sm font-medium text-gray-700">
-                    Medicine Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="medicine"
-                      type="text"
-                      value={formData.medicine}
-                      onChange={handleChange}
-                      required
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                      placeholder="e.g., Paracetamol 500mg"
-                    />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Medicines
+                </label>
+                {formData.medicines.map((med, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 last:mb-0">
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor={`medicine-${index}`}
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Medicine Name {index + 1}
+                      </label>
+                      <div className="mt-1">
+                        <input
+                          id={`medicine-${index}`}
+                          type="text"
+                          value={med.medicine}
+                          onChange={(e) => handleChange(e, index)}
+                          required
+                          className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                          placeholder="e.g., Paracetamol 500mg"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`quantity-${index}`}
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                          Quantity
+                        </label>
+                        <div className="mt-1 relative rounded-md shadow-sm flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(index, false)}
+                            className="inline-flex items-center justify-center px-3 py-3 h-full border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none text-sm sm:text-base"
+                          >
+                            −
+                          </button>
+                          <input
+                            id={`quantity-${index}`}
+                            type="text"
+                            value={med.quantity}
+                            onChange={(e) => handleChange(e, index)}
+                            required
+                            className="block w-full px-4 py-3 border border-gray-300 text-center focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                            placeholder="1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(index, true)}
+                            className="inline-flex items-center justify-center px-3 py-3 h-full border border-l-0 border-gray-300 rounded-r-lg bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none text-sm sm:text-base"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      {formData.medicines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeMedicine(index)}
+                          className="inline-flex items-center justify-center px-3 py-3 h-full border border-gray-300 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 focus:outline-none text-sm sm:text-base"
+                        >
+                          <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                    Quantity
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(false)}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none"
-                    >
-                      −
-                    </button>
-                    <input
-                      id="quantity"
-                      type="text"
-                      value={formData.quantity}
-                      onChange={handleChange}
-                      required
-                      className="block w-full px-4 py-3 border-t border-b border-gray-300 text-center focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                      placeholder="1"
+                ))}
+                <button
+                  type="button"
+                  onClick={addMedicine}
+                  className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <svg
+                    className="h-5 w-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(true)}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-r-lg bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+                  </svg>
+                  Add Medicine
+                </button>
               </div>
 
               <div>
